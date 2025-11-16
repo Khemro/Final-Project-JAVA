@@ -1,7 +1,12 @@
+import java.util.Scanner;
+import java.util.ArrayList;
+
 public class Cancel_booking {
-    public void cancelBooking(){
-        System.out.println("Cancelling booking...");
-        // Implementation for cancelling bookings goes her
+    private Scanner scanner = new Scanner(System.in);
+
+    // Method to cancel a booking
+    public void cancelBooking() {
+        System.out.println("\n=== CANCEL RESERVATION ===");
 
         // Load all bookings from CSV file
         ArrayList<My_Bookings.Booking> allBookings = My_Bookings.loadAllBookings();
