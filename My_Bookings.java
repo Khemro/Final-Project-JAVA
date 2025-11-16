@@ -5,144 +5,92 @@ import java.io.*;
 public class My_Bookings {
     private Scanner scanner = new Scanner(System.in);
 
-    // CSV file path
-    private static final String BOOKINGS_FILE = "bookings.csv";
-    private static final String COUNTER_FILE = "booking_counter.txt";
+    // CSV file path - CHANGED to match BookingTickets.java
+    private static final String BOOKINGS_FILE = "movie_bookings.csv";
 
     // Inner class to represent a booking
     public static class Booking {
         private int bookingId;
         private String movieName;
-        private int numberOfTickets;
-        private double ticketPrice;
-        private double totalPrice;
         private String customerName;
         private String customerEmail;
-        private String status; // "Confirmed", "Cancelled"
+        private int numberOfTickets;
+        private double totalPrice;
         private String bookingDate;
+        private String bookingTime;
+        private String showtime;
+        private String status; // "Confirmed", "Cancelled"
 
-        public Booking(String movieName, int numberOfTickets, double ticketPrice,
-                       String customerName, String customerEmail) {
-            this.bookingId = getNextBookingId();
-            this.movieName = movieName;
-            this.numberOfTickets = numberOfTickets;
-            this.ticketPrice = ticketPrice;
-            this.totalPrice = numberOfTickets * ticketPrice;
-            this.customerName = customerName;
-            this.customerEmail = customerEmail;
-            this.status = "Confirmed";
-            this.bookingDate = java.time.LocalDateTime.now().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        }
-
-        // Constructor for loading from CSV
-        public Booking(int bookingId, String movieName, int numberOfTickets, double ticketPrice,
-                       double totalPrice, String customerName, String customerEmail,
-                       String status, String bookingDate) {
+        // Constructor for loading from CSV (BookingTickets format)
+        // Format: BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,BookingDate,BookingTime,Showtime
+        public Booking(int bookingId, String movieName, String customerName, String customerEmail,
+                       int numberOfTickets, double totalPrice, String bookingDate, 
+                       String bookingTime, String showtime) {
             this.bookingId = bookingId;
             this.movieName = movieName;
-            this.numberOfTickets = numberOfTickets;
-            this.ticketPrice = ticketPrice;
-            this.totalPrice = totalPrice;
             this.customerName = customerName;
             this.customerEmail = customerEmail;
-            this.status = status;
+            this.numberOfTickets = numberOfTickets;
+            this.totalPrice = totalPrice;
             this.bookingDate = bookingDate;
+            this.bookingTime = bookingTime;
+            this.showtime = showtime;
+            this.status = "Confirmed"; // Default status
+        }
+
+        // Constructor with status (for cancelled bookings)
+        public Booking(int bookingId, String movieName, String customerName, String customerEmail,
+                       int numberOfTickets, double totalPrice, String bookingDate, 
+                       String bookingTime, String showtime, String status) {
+            this.bookingId = bookingId;
+            this.movieName = movieName;
+            this.customerName = customerName;
+            this.customerEmail = customerEmail;
+            this.numberOfTickets = numberOfTickets;
+            this.totalPrice = totalPrice;
+            this.bookingDate = bookingDate;
+            this.bookingTime = bookingTime;
+            this.showtime = showtime;
+            this.status = status;
         }
 
         // Getters
         public int getBookingId() { return bookingId; }
         public String getMovieName() { return movieName; }
         public int getNumberOfTickets() { return numberOfTickets; }
-        public double getTicketPrice() { return ticketPrice; }
+        public double getTicketPrice() { 
+            if (numberOfTickets > 0) {
+                return totalPrice / numberOfTickets; 
+            }
+            return 0.0;
+        }
         public double getTotalPrice() { return totalPrice; }
         public String getCustomerName() { return customerName; }
         public String getCustomerEmail() { return customerEmail; }
         public String getStatus() { return status; }
-        public String getBookingDate() { return bookingDate; }
+        public String getBookingDate() { return bookingDate + " " + bookingTime; }
+        public String getShowtime() { return showtime; }
 
         // Setters
         public void setStatus(String status) { this.status = status; }
-        public void setNumberOfTickets(int numberOfTickets) {
+        public void setNumberOfTickets(int numberOfTickets) { 
+            double pricePerTicket = this.totalPrice / this.numberOfTickets;
             this.numberOfTickets = numberOfTickets;
-            this.totalPrice = numberOfTickets * ticketPrice;
+            this.totalPrice = numberOfTickets * pricePerTicket;
         }
 
-        // Convert booking to CSV line
+        // Convert booking to CSV line (BookingTickets format)
         public String toCSV() {
             return bookingId + "," +
-                    escapeCSV(movieName) + "," +
-                    numberOfTickets + "," +
-                    ticketPrice + "," +
-                    totalPrice + "," +
-                    escapeCSV(customerName) + "," +
-                    escapeCSV(customerEmail) + "," +
-                    status + "," +
-                    escapeCSV(bookingDate);
-        }
-
-        // Escape special characters in CSV
-        private String escapeCSV(String value) {
-            if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-                return "\"" + value.replace("\"", "\"\"") + "\"";
-            }
-            return value;
-        }
-    }
-
-    // Initialize CSV file with header if it doesn't exist
-    private static void initializeCSVFile() {
-        File file = new File(BOOKINGS_FILE);
-        if (!file.exists()) {
-            try (PrintWriter writer = new PrintWriter(new FileWriter(BOOKINGS_FILE))) {
-                writer.println("BookingID,MovieName,NumberOfTickets,TicketPrice,TotalPrice,CustomerName,CustomerEmail,Status,BookingDate");
-            } catch (IOException e) {
-                System.out.println("Error initializing CSV file: " + e.getMessage());
-            }
-        }
-    }
-
-    // Get next booking ID from counter file
-    private static synchronized int getNextBookingId() {
-        int nextId = 1000; // Default starting ID
-
-        // Read current counter
-        File counterFile = new File(COUNTER_FILE);
-        if (counterFile.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(COUNTER_FILE))) {
-                String line = reader.readLine();
-                if (line != null) {
-                    nextId = Integer.parseInt(line.trim());
-                }
-            } catch (IOException | NumberFormatException e) {
-                System.out.println("Error reading counter file: " + e.getMessage());
-            }
-        }
-
-        // Increment and save new counter
-        nextId++;
-        try (PrintWriter writer = new PrintWriter(new FileWriter(COUNTER_FILE))) {
-            writer.println(nextId);
-        } catch (IOException e) {
-            System.out.println("Error writing counter file: " + e.getMessage());
-        }
-
-        return nextId;
-    }
-
-    // Method to add a booking to the CSV file
-    public static void addBooking(String movieName, int numberOfTickets, double ticketPrice,
-                                  String customerName, String customerEmail) {
-        initializeCSVFile();
-
-        Booking newBooking = new Booking(movieName, numberOfTickets, ticketPrice,
-                customerName, customerEmail);
-
-        try (PrintWriter writer = new PrintWriter(new FileWriter(BOOKINGS_FILE, true))) {
-            writer.println(newBooking.toCSV());
-            System.out.println("\n✓ Booking recorded with ID: " + newBooking.getBookingId());
-        } catch (IOException e) {
-            System.out.println("Error saving booking: " + e.getMessage());
+                   movieName + "," +
+                   customerName + "," +
+                   customerEmail + "," +
+                   numberOfTickets + "," +
+                   String.format("%.2f", totalPrice) + "," +
+                   bookingDate + "," +
+                   bookingTime + "," +
+                   showtime + "," +
+                   status;
         }
     }
 
@@ -156,23 +104,40 @@ public class My_Bookings {
         }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(BOOKINGS_FILE))) {
-            String line = reader.readLine(); // Skip header
+            String line;
 
             while ((line = reader.readLine()) != null) {
                 try {
-                    String[] parts = parseCSVLine(line);
+                    String[] parts = line.split(",");
+                    
+                    // Handle both formats:
+                    // Format 1 (BookingTickets): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime
+                    // Format 2 (with status): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime,Status
+                    
                     if (parts.length >= 9) {
-                        Booking booking = new Booking(
-                                Integer.parseInt(parts[0]),      // bookingId
-                                parts[1],                        // movieName
-                                Integer.parseInt(parts[2]),      // numberOfTickets
-                                Double.parseDouble(parts[3]),    // ticketPrice
-                                Double.parseDouble(parts[4]),    // totalPrice
-                                parts[5],                        // customerName
-                                parts[6],                        // customerEmail
-                                parts[7],                        // status
-                                parts[8]                         // bookingDate
-                        );
+                        int bookingId = Integer.parseInt(parts[0].trim());
+                        String movieName = parts[1].trim();
+                        String customerName = parts[2].trim();
+                        String customerEmail = parts[3].trim();
+                        int numberOfTickets = Integer.parseInt(parts[4].trim());
+                        double totalPrice = Double.parseDouble(parts[5].trim());
+                        String bookingDate = parts[6].trim();
+                        String bookingTime = parts[7].trim();
+                        String showtime = parts[8].trim();
+                        
+                        Booking booking;
+                        if (parts.length >= 10) {
+                            // Has status field
+                            String status = parts[9].trim();
+                            booking = new Booking(bookingId, movieName, customerName, customerEmail,
+                                                numberOfTickets, totalPrice, bookingDate, bookingTime, 
+                                                showtime, status);
+                        } else {
+                            // No status field, use default
+                            booking = new Booking(bookingId, movieName, customerName, customerEmail,
+                                                numberOfTickets, totalPrice, bookingDate, bookingTime, 
+                                                showtime);
+                        }
                         bookings.add(booking);
                     }
                 } catch (Exception e) {
@@ -184,29 +149,6 @@ public class My_Bookings {
         }
 
         return bookings;
-    }
-
-    // Parse CSV line handling quoted values
-    private static String[] parseCSVLine(String line) {
-        ArrayList<String> result = new ArrayList<>();
-        boolean inQuotes = false;
-        StringBuilder current = new StringBuilder();
-
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-
-            if (c == '"') {
-                inQuotes = !inQuotes;
-            } else if (c == ',' && !inQuotes) {
-                result.add(current.toString());
-                current = new StringBuilder();
-            } else {
-                current.append(c);
-            }
-        }
-        result.add(current.toString());
-
-        return result.toArray(new String[0]);
     }
 
     // Method to update booking in CSV file
@@ -228,10 +170,7 @@ public class My_Bookings {
     // Save all bookings to CSV file
     private static void saveAllBookings(ArrayList<Booking> bookings) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(BOOKINGS_FILE))) {
-            // Write header
-            writer.println("BookingID,MovieName,NumberOfTickets,TicketPrice,TotalPrice,CustomerName,CustomerEmail,Status,BookingDate");
-
-            // Write all bookings
+            // Write all bookings (no header needed)
             for (Booking booking : bookings) {
                 writer.println(booking.toCSV());
             }
@@ -242,7 +181,7 @@ public class My_Bookings {
 
     // Method to display all bookings
     public void viewAllBookings() {
-        System.out.println("\n=== MY BOOKINGS ===");
+        System.out.println("\n=== ALL BOOKINGS ===");
 
         ArrayList<Booking> allBookings = loadAllBookings();
 
@@ -331,10 +270,11 @@ public class My_Bookings {
         System.out.println("Booking ID      : " + booking.getBookingId());
         System.out.println("Movie           : " + booking.getMovieName());
         System.out.println("Tickets         : " + booking.getNumberOfTickets());
-        System.out.println("Price per Ticket: $" + booking.getTicketPrice());
-        System.out.println("Total Price     : $" + booking.getTotalPrice());
+        System.out.println("Price per Ticket: $" + String.format("%.2f", booking.getTicketPrice()));
+        System.out.println("Total Price     : $" + String.format("%.2f", booking.getTotalPrice()));
         System.out.println("Customer Name   : " + booking.getCustomerName());
         System.out.println("Email           : " + booking.getCustomerEmail());
+        System.out.println("Showtime        : " + booking.getShowtime());
         System.out.println("Status          : " + booking.getStatus());
         System.out.println("Booking Date    : " + booking.getBookingDate());
     }
@@ -378,5 +318,10 @@ public class My_Bookings {
     // Method to get all bookings (for other classes to access)
     public static ArrayList<Booking> getAllBookings() {
         return loadAllBookings();
+    }
+
+    // Added method for compatibility with main.java
+    public void viewMyBookings() {
+        showBookingsMenu();
     }
 }
