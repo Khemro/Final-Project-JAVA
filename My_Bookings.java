@@ -1,7 +1,8 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+import java.io.*;
+
 public class My_Bookings {
-    public void viewMyBookings() {
-    System.out.println("Viewing my bookings...");
-        
     private Scanner scanner = new Scanner(System.in);
 
     // CSV file path
