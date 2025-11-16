@@ -12,7 +12,8 @@ public class BookingTickets {
     private String bookingsFile = "movie_bookings.csv";
     
     // Constructor - runs automatically when BookingTickets object is created
-    public BookingTickets() {
+    public BookingTickets() 
+        {
             System.out.println("=========================================");
             System.out.println("   MOVIE TICKET BOOKING SYSTEM STARTED  ");
             System.out.println("=========================================");
@@ -20,7 +21,8 @@ public class BookingTickets {
         }
     
     // Initialize the CSV file - creates it if doesn't exist
-    private void initializeCSVFile(){
+    private void initializeCSVFile()
+    {
         try 
         {
             FileWriter write = new FileWriter(bookingsFile, true);
