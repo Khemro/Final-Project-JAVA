@@ -2,22 +2,31 @@ import java.util.Scanner;
 import java.util.InputMismatchException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 public class BookingTickets {
     private Scanner scanner = new Scanner(System.in);
     private int bookingIDCounter = 1;
     private String bookingsFile = "movie_bookings.csv";
+    private String moviesFile = "movies.csv";
+    private Map<String, List<String>> moviesByGenre = new HashMap<>();
+    private Map<String, Boolean> seatingMap = new HashMap<>(); // Key: seat coordinate (e.g., "A1"), Value: true if booked, false if available
     
     // Constructor - runs automatically when BookingTickets object is created
     public BookingTickets() 
         {
-            System.out.println("=========================================");
-            System.out.println("   MOVIE TICKET BOOKING SYSTEM STARTED  ");
-            System.out.println("=========================================");
             initializeCSVFile(); // Setup the CSV file for storing bookings
+            loadMoviesFromCSV(); // Load movies from CSV file
+            initializeSeatingMap(); // Initialize 10×10 seating map
+            loadBookedSeatsFromCSV(); // Load existing bookings to mark seats as booked
         }
     
     // Initialize the CSV file - creates it if doesn't exist
@@ -27,7 +36,6 @@ public class BookingTickets {
         {
             FileWriter write = new FileWriter(bookingsFile, true);
             write.close();
-            System.out.println("✓ Booking system ready - CSV file initialized");
         } catch (IOException e)
 
         {
@@ -35,102 +43,322 @@ public class BookingTickets {
         }
     }
     
+    // Load movies from CSV file and organize by genre
+    private void loadMoviesFromCSV()
+    {
+        try 
+        {
+            BufferedReader reader = new BufferedReader(new FileReader(moviesFile));
+            String line = reader.readLine(); // Skip header line
+            
+            while ((line = reader.readLine()) != null) 
+            {
+                String[] parts = line.split(",");
+                if (parts.length >= 2) 
+                {
+                    String genre = parts[0].trim();
+                    String movie = parts[1].trim();
+                    
+                    // Add movie to the appropriate genre list
+                    moviesByGenre.putIfAbsent(genre, new ArrayList<>());
+                    moviesByGenre.get(genre).add(movie);
+                }
+            }
+            reader.close();
+        } 
+        catch (IOException e) 
+        {
+            System.out.println("❌ An error occurred while loading movies: " + e.getMessage());
+        }
+    }
+    
+    // Initialize 10×10 seating map (A1-A10, B1-B10, ..., J1-J10)
+    private void initializeSeatingMap()
+    {
+        for (char row = 'A'; row <= 'J'; row++) 
+        {
+            for (int col = 1; col <= 10; col++) 
+            {
+                String seat = String.valueOf(row) + col;
+                seatingMap.put(seat, false); // false means available
+            }
+        }
+    }
+    
+    // Display seating map
+    private void displaySeatingMap()
+    {
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("   🪑 THEATER SEATING MAP (10×10)");
+        System.out.println("=".repeat(60));
+        System.out.println("   Legend: [ ] = Available, [X] = Booked");
+        System.out.println("   " + " ".repeat(10) + "SCREEN");
+        System.out.println("   " + "=".repeat(50));
+        
+        // Print column numbers
+        System.out.print("   ");
+        for (int col = 1; col <= 10; col++) 
+        {
+            System.out.print(String.format("%4d", col));
+        }
+        System.out.println();
+        
+        // Print rows with seat status
+        for (char row = 'A'; row <= 'J'; row++) 
+        {
+            System.out.print(" " + row + " ");
+            for (int col = 1; col <= 10; col++) 
+            {
+                String seat = String.valueOf(row) + col;
+                boolean isBooked = seatingMap.get(seat);
+                if (isBooked) 
+                {
+                    System.out.print("[X] ");
+                } 
+                else 
+                {
+                    System.out.print("[ ] ");
+                }
+            }
+            System.out.println();
+        }
+        System.out.println("=".repeat(60));
+    }
+    
+    // Get available seats count
+    private int getAvailableSeatsCount()
+    {
+        int count = 0;
+        for (boolean booked : seatingMap.values()) 
+        {
+            if (!booked) 
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    // Load booked seats from existing bookings in CSV file
+    private void loadBookedSeatsFromCSV()
+    {
+        try 
+        {
+            BufferedReader reader = new BufferedReader(new FileReader(bookingsFile));
+            String line;
+            
+            while ((line = reader.readLine()) != null) 
+            {
+                try 
+                {
+                    String[] parts = line.split(",");
+                    // Format: BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime,Seats[,Status]
+                    if (parts.length >= 10) 
+                    {
+                        String seatsStr = parts[9].trim();
+                        if (!seatsStr.isEmpty()) 
+                        {
+                            // Seats are separated by semicolon
+                            String[] seats = seatsStr.split(";");
+                            for (String seat : seats) 
+                            {
+                                seat = seat.trim().toUpperCase();
+                                if (isValidSeat(seat)) 
+                                {
+                                    // Check if booking is not cancelled (if status field exists)
+                                    boolean isCancelled = false;
+                                    if (parts.length >= 11) 
+                                    {
+                                        String status = parts[10].trim();
+                                        isCancelled = status.equalsIgnoreCase("Cancelled");
+                                    }
+                                    
+                                    // Only mark as booked if not cancelled
+                                    if (!isCancelled) 
+                                    {
+                                        seatingMap.put(seat, true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } 
+                catch (Exception e) 
+                {
+                    // Skip invalid lines
+                    continue;
+                }
+            }
+            reader.close();
+        } 
+        catch (IOException e) 
+        {
+            // File might not exist yet, which is okay
+        }
+    }
+    
     // Main method for browsing and booking tickets
     public void browseAndBookTickets()
     {
         while (true){
-            int user_choice;
+            // Step 1: Genre Selection
             System.out.println("\n" + "=".repeat(50));
             System.out.println("        🎬 BROWSE AND BOOK TICKETS 🎬");
             System.out.println("=".repeat(50));
-            System.out.println("1. Inception - $50 per ticket");
-            System.out.println("2. Interstellar - $60 per ticket"); 
-            System.out.println("3. The Dark Knight - $55 per ticket");
-            System.out.println("4. Dunkirk - $45 per ticket");
-            System.out.println("5. Return to Main Menu");
+            System.out.println("📂 Select a Genre:");
+            System.out.println("1. Action");
+            System.out.println("2. Thriller");
+            System.out.println("3. Horror");
+            System.out.println("4. Funny");
+            System.out.println("5. Romantic");
+            System.out.println("6. Return to Main Menu");
             System.out.println("-".repeat(50));
-            System.out.print("🎭 Select a movie (1-5): ");
-         
-                user_choice = getValidnumber();
-                if (user_choice == 5){
-                    System.out.println("\n" + "=".repeat(40));
-                    System.out.println("   RETURNING TO MAIN MENU...");
-                    System.out.println("=".repeat(40));
-                    return;
-                }
-                if (user_choice == -1){
-                    continue;
-                }
-
-            String movie = "";
-            double PriceperTicket = 0.0;
-            int available_tickets = 100; // Assume each movie has 100 tickets available
-            String Showtime = "";
+            System.out.print("🎭 Select a genre (1-6): ");
             
-            // Handle movie selection based on user choice
-            switch (user_choice)
+            int genre_choice = getValidnumber();
+            
+            if (genre_choice == 6){
+                System.out.println("\n" + "=".repeat(40));
+                System.out.println("   RETURNING TO MAIN MENU...");
+                System.out.println("=".repeat(40));
+                return;
+            }
+            
+            String selectedGenre = "";
+            switch (genre_choice)
             {
-                case 1:
-                    movie = "Inception";
-                    PriceperTicket = 50.0;
-                    Showtime = "1:00 PM";
-                    displayMovieDetails("Inception - A mind-bending thriller about dream infiltration and subconscious security.", 
-                                    PriceperTicket, "3D and IMAX", available_tickets, Showtime);
-                    break;
-                case 2:
-                    movie = "Interstellar";
-                    PriceperTicket = 60.0;
-                    Showtime = "4:00 PM";
-                    displayMovieDetails("Interstellar - An epic space odyssey through wormholes to save humanity from extinction.", 
-                                    PriceperTicket, "IMAX", available_tickets, Showtime);
-                    break;  
-                case 3:
-                    movie = "The Dark Knight";
-                    PriceperTicket = 55.0;
-                    Showtime = "7:00 PM";
-                    displayMovieDetails("The Dark Knight - Batman faces his greatest challenge against the chaotic Joker in Gotham City.", 
-                                    PriceperTicket, "IMAX", available_tickets, Showtime);
-                    break;
-                case 4:
-                    movie = "Dunkirk";
-                    PriceperTicket = 45.0;
-                    Showtime = "9:00 PM";
-                    displayMovieDetails("Dunkirk - A intense war film depicting the miraculous evacuation of Allied soldiers from Dunkirk beaches.", 
-                                    PriceperTicket, "IMAX", available_tickets, Showtime);
-                    break;
-
+                case 1: selectedGenre = "Action"; break;
+                case 2: selectedGenre = "Thriller"; break;
+                case 3: selectedGenre = "Horror"; break;
+                case 4: selectedGenre = "Funny"; break;
+                case 5: selectedGenre = "Romantic"; break;
                 default:
-                    System.out.println("\n❌ Invalid choice. Please select a valid movie (1-5).");
+                    System.out.println("\n❌ Invalid choice. Please select a valid genre (1-6).");
                     continue;
-                }
-                
-                System.out.println("\n" + "-".repeat(50));
-                System.out.print("📝 Do you want to book tickets for '" + movie + "'? (yes/no): ");
-                String bookchoice = getYesNoInput();
+            }
+            
+            // Step 2: Display movies for selected genre
+            List<String> movies = moviesByGenre.get(selectedGenre);
+            if (movies == null || movies.isEmpty())
+            {
+                System.out.println("\n❌ No movies found for genre: " + selectedGenre);
+                continue;
+            }
+            
+            System.out.println("\n" + "=".repeat(50));
+            System.out.println("   🎥 MOVIES IN " + selectedGenre.toUpperCase() + " GENRE");
+            System.out.println("=".repeat(50));
+            
+            // Generate showtimes for movies (different times for variety)
+            String[] showtimes = {"1:00 PM", "4:00 PM", "7:00 PM", "9:30 PM"};
+            
+            for (int i = 0; i < movies.size(); i++)
+            {
+                String showtime = showtimes[i % showtimes.length]; // Cycle through showtimes
+                System.out.println((i + 1) + ". " + movies.get(i) + " - 🕐 " + showtime);
+            }
+            System.out.println((movies.size() + 1) + ". Go back to genre selection");
+            System.out.println("-".repeat(50));
+            System.out.print("🎬 Select a movie (1-" + (movies.size() + 1) + "): ");
+            
+            int movie_choice = getValidnumber();
+            
+            if (movie_choice == movies.size() + 1)
+            {
+                continue; // Go back to genre selection
+            }
+            
+            if (movie_choice < 1 || movie_choice > movies.size())
+            {
+                System.out.println("\n❌ Invalid choice. Please select a valid movie.");
+                continue;
+            }
+            
+            String selectedMovie = movies.get(movie_choice - 1);
+            double PriceperTicket = 50.0; // Default price, can be customized per movie
+            int available_tickets = getAvailableSeatsCount();
+            
+            // Generate showtime based on movie position (same as in list)
+            String Showtime = showtimes[(movie_choice - 1) % showtimes.length];
+            
+            displayMovieDetails(selectedMovie + " - A great " + selectedGenre.toLowerCase() + " movie.", 
+                            PriceperTicket, "Standard", available_tickets, Showtime);
+            
+            System.out.println("\n" + "-".repeat(50));
+            System.out.println("🕐 Showtime: " + Showtime);
+            System.out.println("-".repeat(50));
+            System.out.print("📝 Do you want to book tickets for '" + selectedMovie + "' at " + Showtime + "? (yes/no): ");
+            String bookchoice = getYesNoInput();
 
-                // If user wants to book, proceed with booking process
-                if (bookchoice.equalsIgnoreCase("yes")){
-                    book_Tickets(movie, PriceperTicket, available_tickets, Showtime);
-                }
-                
+            // If user wants to book, proceed with booking process
+            if (bookchoice.equalsIgnoreCase("yes")){
+                book_Tickets(selectedMovie, PriceperTicket, available_tickets, Showtime);
+            }
+            
+            System.out.println("\n" + "=".repeat(50));
+            System.out.print("🔍 Do you want to browse more movies? (yes/no): ");
+            String continueChoice = getYesNoInput();
+            
+            if (!continueChoice.equalsIgnoreCase("yes")){
                 System.out.println("\n" + "=".repeat(50));
-                System.out.print("🔍 Do you want to browse more movies? (yes/no): ");
-                String continueChoice = getYesNoInput();
-                
-                if (!continueChoice.equalsIgnoreCase("yes")){
-                    System.out.println("\n" + "=".repeat(50));
-                    System.out.println("   👋 Thank you for using our booking system!");
-                    System.out.println("=".repeat(50));
-                    return;
-                }
-           }
-           
+                System.out.println("   👋 Thank you for using our booking system!");
+                System.out.println("=".repeat(50));
+                return;
+            }
+        }
     }
     
     
 
+    // Validate seat coordinate (e.g., A1, B5, J10)
+    private boolean isValidSeat(String seat)
+    {
+        if (seat == null || seat.length() < 2 || seat.length() > 3)
+        {
+            return false;
+        }
+        
+        char row = Character.toUpperCase(seat.charAt(0));
+        if (row < 'A' || row > 'J')
+        {
+            return false;
+        }
+        
+        try 
+        {
+            int col = Integer.parseInt(seat.substring(1));
+            if (col < 1 || col > 10)
+            {
+                return false;
+            }
+        } 
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Check if seat is available
+    private boolean isSeatAvailable(String seat)
+    {
+        if (!isValidSeat(seat))
+        {
+            return false;
+        }
+        Boolean booked = seatingMap.get(seat.toUpperCase());
+        return booked != null && !booked;
+    }
+    
+    // Book a seat
+    private void bookSeat(String seat)
+    {
+        seatingMap.put(seat.toUpperCase(), true);
+    }
+    
     // Save booking details to CSV file
-    public void saveToCSV(String MovieName, String CustomerName, String CustomerEmail, int Tickets, double TotalPrice, String Showtime){
+    public void saveToCSV(String MovieName, String CustomerName, String CustomerEmail, int Tickets, double TotalPrice, String Showtime, String Seats){
         try {
                 FileWriter write = new FileWriter(bookingsFile, true);
                 LocalDateTime now = LocalDateTime.now();
@@ -140,8 +368,8 @@ public class BookingTickets {
                 String BookingDate = now.format(dateFormatter);
                 String BookingTime = now.format(timeFormatter);
                 
-                // Format all booking data into a CSV line
-                String Data_Line = String.format("%d,%s,%s,%s,%d,%.2f,%s,%s,%s",
+                // Format all booking data into a CSV line (including seats)
+                String Data_Line = String.format("%d,%s,%s,%s,%d,%.2f,%s,%s,%s,%s",
                 bookingIDCounter++,
                         MovieName,
                         CustomerName,
@@ -150,7 +378,8 @@ public class BookingTickets {
                         TotalPrice,
                         BookingDate,
                         BookingTime,
-                        Showtime
+                        Showtime,
+                        Seats
                 );
 
             write.write(Data_Line + "\n");
@@ -168,6 +397,9 @@ public class BookingTickets {
         System.out.println("   🎟️  BOOKING TICKETS FOR: " + MovieName.toUpperCase());
         System.out.println("=".repeat(50));
         
+        // Display seating map
+        displaySeatingMap();
+        
         // Get and validate number of tickets
         while (true)
         {
@@ -178,14 +410,61 @@ public class BookingTickets {
                 System.out.println("❌ Please enter a valid number of tickets (must be positive).");
                 continue;
             }
-             if (number_of_tickets > available_tickets)
+            if (number_of_tickets > available_tickets)
             {
                 System.out.println("❌ Sorry, only " + available_tickets + " tickets are available.");
                 continue;
             }
-                  break;
+            break;
+        }
+        
+        // Seat selection
+        List<String> selectedSeats = new ArrayList<>();
+        System.out.println("\n" + "-".repeat(50));
+        System.out.println("   🪑 SEAT SELECTION");
+        System.out.println("-".repeat(50));
+        System.out.println("Please select " + number_of_tickets + " seat(s).");
+        System.out.println("Enter seat coordinates (e.g., A1, B5, J10)");
+        
+        for (int i = 0; i < number_of_tickets; i++)
+        {
+            while (true)
+            {
+                System.out.print("🎫 Select seat " + (i + 1) + " of " + number_of_tickets + ": ");
+                String seat = scanner.nextLine().trim().toUpperCase();
+                
+                if (!isValidSeat(seat))
+                {
+                    System.out.println("❌ Invalid seat format. Please enter a valid seat (e.g., A1, B5, J10).");
+                    continue;
+                }
+                
+                if (!isSeatAvailable(seat))
+                {
+                    System.out.println("❌ Seat " + seat + " is already booked. Please select another seat.");
+                    continue;
+                }
+                
+                if (selectedSeats.contains(seat))
+                {
+                    System.out.println("❌ Seat " + seat + " is already selected. Please select another seat.");
+                    continue;
+                }
+                
+                selectedSeats.add(seat);
+                System.out.println("✓ Seat " + seat + " selected.");
+                break;
             }
-            
+        }
+        
+        // Book the selected seats
+        for (String seat : selectedSeats)
+        {
+            bookSeat(seat);
+        }
+        
+        String seatsString = String.join(";", selectedSeats);
+        
         // Calculate total price
         double TotalPrice = number_of_tickets * PriceperTicket;
         
@@ -204,6 +483,7 @@ public class BookingTickets {
         System.out.println("=".repeat(50));
         System.out.println("🎬 Movie: " + MovieName);
         System.out.println("🎟️  Number of Tickets: " + number_of_tickets);
+        System.out.println("🪑 Selected Seats: " + seatsString.replace(";", ", "));
         System.out.println("💰 Price per Ticket: $" + PriceperTicket);
         System.out.println("💵 Total Price: $" + TotalPrice);
         System.out.println("👤 Customer Name: " + CustomerName);
@@ -216,6 +496,11 @@ public class BookingTickets {
         String confirm = getYesNoInput();
         
         if (!confirm.equalsIgnoreCase("yes")){
+            // Release the seats if booking is cancelled
+            for (String seat : selectedSeats)
+            {
+                seatingMap.put(seat, false);
+            }
             System.out.println("\n" + "=".repeat(40));
             System.out.println("   🚫 BOOKING CANCELLED");
             System.out.println("   Returning to movie browsing...");
@@ -224,11 +509,12 @@ public class BookingTickets {
         }
 
         if (confirm.equalsIgnoreCase("yes")){
-            saveToCSV(MovieName, CustomerName, CustomerEmail, number_of_tickets, TotalPrice, Showtime);
-            System.out.println("\n" + "🎉".repeat(20));
+            saveToCSV(MovieName, CustomerName, CustomerEmail, number_of_tickets, TotalPrice, Showtime, seatsString);
+            System.out.println("\n");
             System.out.println("   🎉 BOOKING CONFIRMED!");
+            System.out.println("   🪑 Your seats: " + seatsString.replace(";", ", "));
             System.out.println("   📧 Tickets have been sent to: " + CustomerEmail);
-            System.out.println("🎉".repeat(20));
+            System.out.println(" ");
         }
     }
     

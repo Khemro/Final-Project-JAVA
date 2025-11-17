@@ -19,13 +19,14 @@ public class My_Bookings {
         private String bookingDate;
         private String bookingTime;
         private String showtime;
+        private String seats; // Seat coordinates (e.g., "A1;B5;J10")
         private String status; // "Confirmed", "Cancelled"
 
         // Constructor for loading from CSV (BookingTickets format)
-        // Format: BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,BookingDate,BookingTime,Showtime
+        // Format: BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,BookingDate,BookingTime,Showtime,Seats
         public Booking(int bookingId, String movieName, String customerName, String customerEmail,
                        int numberOfTickets, double totalPrice, String bookingDate, 
-                       String bookingTime, String showtime) {
+                       String bookingTime, String showtime, String seats) {
             this.bookingId = bookingId;
             this.movieName = movieName;
             this.customerName = customerName;
@@ -35,13 +36,14 @@ public class My_Bookings {
             this.bookingDate = bookingDate;
             this.bookingTime = bookingTime;
             this.showtime = showtime;
+            this.seats = seats != null ? seats : "";
             this.status = "Confirmed"; // Default status
         }
 
         // Constructor with status (for cancelled bookings)
         public Booking(int bookingId, String movieName, String customerName, String customerEmail,
                        int numberOfTickets, double totalPrice, String bookingDate, 
-                       String bookingTime, String showtime, String status) {
+                       String bookingTime, String showtime, String seats, String status) {
             this.bookingId = bookingId;
             this.movieName = movieName;
             this.customerName = customerName;
@@ -51,6 +53,7 @@ public class My_Bookings {
             this.bookingDate = bookingDate;
             this.bookingTime = bookingTime;
             this.showtime = showtime;
+            this.seats = seats != null ? seats : "";
             this.status = status;
         }
 
@@ -70,6 +73,7 @@ public class My_Bookings {
         public String getStatus() { return status; }
         public String getBookingDate() { return bookingDate + " " + bookingTime; }
         public String getShowtime() { return showtime; }
+        public String getSeats() { return seats != null ? seats : ""; }
 
         // Setters
         public void setStatus(String status) { this.status = status; }
@@ -81,16 +85,33 @@ public class My_Bookings {
 
         // Convert booking to CSV line (BookingTickets format)
         public String toCSV() {
-            return bookingId + "," +
-                   movieName + "," +
-                   customerName + "," +
-                   customerEmail + "," +
-                   numberOfTickets + "," +
-                   String.format("%.2f", totalPrice) + "," +
-                   bookingDate + "," +
-                   bookingTime + "," +
-                   showtime + "," +
-                   status;
+            String seatsStr = seats != null ? seats : "";
+            if (status != null && !status.isEmpty()) {
+                // Include status if present
+                return bookingId + "," +
+                       movieName + "," +
+                       customerName + "," +
+                       customerEmail + "," +
+                       numberOfTickets + "," +
+                       String.format("%.2f", totalPrice) + "," +
+                       bookingDate + "," +
+                       bookingTime + "," +
+                       showtime + "," +
+                       seatsStr + "," +
+                       status;
+            } else {
+                // No status field
+                return bookingId + "," +
+                       movieName + "," +
+                       customerName + "," +
+                       customerEmail + "," +
+                       numberOfTickets + "," +
+                       String.format("%.2f", totalPrice) + "," +
+                       bookingDate + "," +
+                       bookingTime + "," +
+                       showtime + "," +
+                       seatsStr;
+            }
         }
     }
 
@@ -110,9 +131,10 @@ public class My_Bookings {
                 try {
                     String[] parts = line.split(",");
                     
-                    // Handle both formats:
-                    // Format 1 (BookingTickets): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime
-                    // Format 2 (with status): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime,Status
+                    // Handle formats:
+                    // Format 1 (new BookingTickets with seats): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime,Seats
+                    // Format 2 (with status): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime,Seats,Status
+                    // Format 3 (old format without seats): BookingID,MovieName,CustomerName,CustomerEmail,Tickets,TotalPrice,Date,Time,Showtime
                     
                     if (parts.length >= 9) {
                         int bookingId = Integer.parseInt(parts[0].trim());
@@ -124,19 +146,30 @@ public class My_Bookings {
                         String bookingDate = parts[6].trim();
                         String bookingTime = parts[7].trim();
                         String showtime = parts[8].trim();
+                        String seats = "";
+                        String status = null;
+                        
+                        // Check if seats field exists (10th field)
+                        if (parts.length >= 10) {
+                            seats = parts[9].trim();
+                        }
+                        
+                        // Check if status field exists (11th field)
+                        if (parts.length >= 11) {
+                            status = parts[10].trim();
+                        }
                         
                         Booking booking;
-                        if (parts.length >= 10) {
+                        if (status != null && !status.isEmpty()) {
                             // Has status field
-                            String status = parts[9].trim();
                             booking = new Booking(bookingId, movieName, customerName, customerEmail,
                                                 numberOfTickets, totalPrice, bookingDate, bookingTime, 
-                                                showtime, status);
+                                                showtime, seats, status);
                         } else {
                             // No status field, use default
                             booking = new Booking(bookingId, movieName, customerName, customerEmail,
                                                 numberOfTickets, totalPrice, bookingDate, bookingTime, 
-                                                showtime);
+                                                showtime, seats);
                         }
                         bookings.add(booking);
                     }
@@ -270,6 +303,10 @@ public class My_Bookings {
         System.out.println("Booking ID      : " + booking.getBookingId());
         System.out.println("Movie           : " + booking.getMovieName());
         System.out.println("Tickets         : " + booking.getNumberOfTickets());
+        String seatsStr = booking.getSeats();
+        if (seatsStr != null && !seatsStr.isEmpty()) {
+            System.out.println("Seats           : " + seatsStr.replace(";", ", "));
+        }
         System.out.println("Price per Ticket: $" + String.format("%.2f", booking.getTicketPrice()));
         System.out.println("Total Price     : $" + String.format("%.2f", booking.getTotalPrice()));
         System.out.println("Customer Name   : " + booking.getCustomerName());
@@ -283,10 +320,8 @@ public class My_Bookings {
     public void showBookingsMenu() {
         while (true) {
             System.out.println("\n=== MY BOOKINGS MENU ===");
-            System.out.println("1. View All Bookings");
-            System.out.println("2. View My Bookings (by Email)");
-            System.out.println("3. Search Booking by ID");
-            System.out.println("4. Back to Main Menu");
+            System.out.println("1. View My Bookings (by Email)");
+            System.out.println("2. Back to Main Menu");
             System.out.print("Enter your choice: ");
 
             try {
@@ -295,18 +330,12 @@ public class My_Bookings {
 
                 switch (choice) {
                     case 1:
-                        viewAllBookings();
-                        break;
-                    case 2:
                         viewBookingsByEmail();
                         break;
-                    case 3:
-                        searchBookingById();
-                        break;
-                    case 4:
+                    case 2:
                         return; // Exit to main menu
                     default:
-                        System.out.println("Invalid choice. Please select 1-4.");
+                        System.out.println("Invalid choice. Please select 1-2.");
                 }
             } catch (Exception e) {
                 System.out.println("Invalid input! Please enter a number.");
