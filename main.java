@@ -26,7 +26,7 @@ public class main
                             
                             break;
                         case 2: 
-                            cancel.cancelBooking();
+                            myBookings.viewMyBookings();
                             break;
                         case 3: 
                             myBookings.viewMyBookings();
