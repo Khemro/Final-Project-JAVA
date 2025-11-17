@@ -26,10 +26,10 @@ public class main
                             
                             break;
                         case 2: 
-                            cancel.cancelBooking();
-                            break;
-                        case 3: 
                             myBookings.viewMyBookings();
+                            break;
+                            case 3: 
+                            cancel.cancelBooking();
                             break;
                         case 4: 
                             System.out.println("Exiting the application. Goodbye!");
