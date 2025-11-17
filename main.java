@@ -28,8 +28,8 @@ public class main
                         case 2: 
                             myBookings.viewMyBookings();
                             break;
-                        case 3: 
-                            myBookings.viewMyBookings();
+                            case 3: 
+                            cancel.cancelBooking();
                             break;
                         case 4: 
                             System.out.println("Exiting the application. Goodbye!");
