@@ -1,0 +1,43 @@
+genre_prefix,movie_id,movie_title
+AC,AC001,The Matrix
+AC,AC002,John Wick
+AC,AC003,Mad Max: Fury Road
+AC,AC004,Die Hard
+AC,AC005,Terminator 2: Judgment Day
+AC,AC006,The Avengers
+AC,AC007,Inception
+AC,AC008,Gladiator
+AC,AC009,Formula 1
+TR,TR001,The Silence of the Lambs
+TR,TR002,Se7en
+TR,TR003,Shutter Island
+TR,TR004,Gone Girl
+TR,TR005,The Sixth Sense
+TR,TR006,Zodiac
+TR,TR007,The Prestige
+TR,TR008,Interstellar
+HR,HR001,The Exorcist
+HR,HR002,The Shining
+HR,HR003,Get Out
+HR,HR004,Hereditary
+HR,HR005,The Conjuring
+HR,HR006,It
+HR,HR007,A Quiet Place
+HR,HR008,The Ring
+FU,FU001,The Hangover
+FU,FU002,Superbad
+FU,FU003,Anchorman
+FU,FU004,Step Brothers
+FU,FU005,Bridesmaids
+FU,FU006,21 Jump Street
+FU,FU007,The Grand Budapest Hotel
+FU,FU008,Deadpool
+RO,RO001,The Notebook
+RO,RO002,Titanic
+RO,RO003,Pride and Prejudice
+RO,RO004,La La Land
+RO,RO005,Crazy Rich Asians
+RO,RO006,The Proposal
+RO,RO007,500 Days of Summer
+RO,RO008,Before Sunrise
+RO,RO009,The Fault in Our Stars

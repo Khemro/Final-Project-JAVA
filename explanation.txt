@@ -1,0 +1,38 @@
+Explanation: How Genre Prefixes and Movie IDs are Handled
+
+This program utilizes a `MovieData` class (an instance of which is passed to `BookingTickets`) to manage and access information from `genres.csv` and `movies.csv`.
+
+**1. How the program gets the genre prefix from `genres.csv`:**
+
+The `genres.csv` file is structured as follows:
+`genre_prefix,genre_id,genre_name`
+Example: `AC,AC01,Action`
+
+The `MovieData` class is responsible for reading and parsing this CSV file. It likely loads the genre information into an internal data structure, such as a `Map` where the `genre_prefix` (e.g., "AC") is the key, and the corresponding `genre_id` and `genre_name` are stored as values (perhaps in a custom `Genre` object or similar structure).
+
+In the `BookingTickets.java` class, when a movie is selected (`selectedMovie` object), its `genrePrefix` attribute is used to retrieve the full genre name. This happens in the line:
+`String selectedMovieGenre = movieData.getGenreByPrefix(selectedMovie.genrePrefix).name;`
+
+Here's a breakdown:
+*   `selectedMovie.genrePrefix`: This provides the genre prefix (e.g., "AC") associated with the `selectedMovie`.
+*   `movieData.getGenreByPrefix(...)`: The `MovieData` object's `getGenreByPrefix` method is called with this prefix. This method would look up the prefix in its internal data structure (populated from `genres.csv`) and return a `Genre` object (or equivalent) containing all the details for that genre.
+*   `.name`: From the returned `Genre` object, the `name` attribute (e.g., "Action") is extracted, giving the full genre name.
+
+So, the program reads `genres.csv` once (or on demand) via the `MovieData` class, stores the data, and then provides methods to look up genre details using the genre prefix.
+
+**2. How the program gets movie IDs from `movies.csv`:**
+
+The `movies.csv` file is structured as follows:
+`genre_prefix,movie_id,movie_title`
+Example: `AC,AC001,The Matrix`
+
+Similar to `genres.csv`, the `MovieData` class is also responsible for reading and parsing `movies.csv`. It likely loads all the movie information into an internal data structure, such as a `List` of `Movie` objects, where each `Movie` object stores the `genre_prefix`, `movie_id`, and `movie_title`.
+
+When the `BookingTickets` class needs a `selectedMovie`, it receives a `MovieData.Movie` object (as seen in the `bookMovie` method signature: `public boolean bookMovie(MovieData.Movie selectedMovie)`). This `selectedMovie` object already contains the `movieId` and `title`.
+
+The user's initial interaction (before calling `bookMovie`) would involve a mechanism to select a movie. This selection process would typically:
+*   Read `movies.csv` (done by `MovieData`).
+*   Display a list of movies to the user (e.g., by iterating through the loaded `Movie` objects).
+*   Allow the user to choose a movie, which then provides the `MovieData.Movie` object to the `bookMovie` method.
+
+Therefore, the movie IDs (like "AC001") are obtained when the `MovieData` class initially reads `movies.csv` and populates its internal list of `Movie` objects. When a user selects a movie, the corresponding `movie_id` is readily available as an attribute of the `selectedMovie` object passed to the booking functions. The "AC" in "AC id movies" therefore refers to the `genre_prefix` part of the `movie_id` itself, which is loaded directly from `movies.csv` as part of the `movie_id` string (e.g., "AC001").
