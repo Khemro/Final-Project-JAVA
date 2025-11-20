@@ -1,3 +1,5 @@
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -11,10 +13,33 @@ public class User_authen
 {
     private Scanner scanner = new Scanner(System.in);
     private String usersFile = "users.csv";
+    private static int currentUserId = -1; // Track current logged-in user ID (-1 means not logged in)
+    private static String currentUserEmail = ""; // Track current logged-in user email
     
     public User_authen()
     {
         initializeUserFiles();
+    }
+    
+    // Get current logged-in user ID
+    public static int getCurrentUserId() {
+        return currentUserId;
+    }
+    
+    // Get current logged-in user email
+    public static String getCurrentUserEmail() {
+        return currentUserEmail;
+    }
+    
+    // Check if user is logged in
+    public static boolean isLoggedIn() {
+        return currentUserId != -1;
+    }
+    
+    // Logout user
+    public static void logout() {
+        currentUserId = -1;
+        currentUserEmail = "";
     }
 
     private void initializeUserFiles()
@@ -23,7 +48,6 @@ public class User_authen
         {
             FileWriter write = new FileWriter(usersFile, true);
             write.close();
-            System.out.println("✓ User system ready - CSV file initialized");
         } 
         catch (IOException e)
         {
@@ -31,6 +55,46 @@ public class User_authen
         }
     }
 
+    // Get the next user ID by reading all existing users
+    private int getNextUserId() 
+    {
+        int maxId = 0;
+        try 
+        {
+            BufferedReader reader = new BufferedReader(new FileReader(usersFile));
+            String line;
+            
+            while ((line = reader.readLine()) != null) 
+            {
+                String[] parts = line.split(",");
+                // Format: UserID,Email,Password,Name,Date,Time
+                if (parts.length >= 1) 
+                {
+                    try 
+                    {
+                        int userId = Integer.parseInt(parts[0].trim());
+                        if (userId > maxId) 
+                        {
+                            maxId = userId;
+                        }
+                    } 
+                    catch (NumberFormatException e) 
+                    {
+                        // Skip invalid lines (old format without user ID)
+                        continue;
+                    }
+                }
+            }
+            reader.close();
+        } 
+        catch (IOException e) 
+        {
+            // File might not exist yet, start from 1
+            return 1;
+        }
+        return maxId + 1;
+    }
+    
     private boolean isEmailExists(String email) 
     {
         try 
@@ -43,10 +107,13 @@ public class User_authen
                 // Split CSV line by commas
                 String[] parts = line.split(",");
                 
-                // Check if this line has at least an email field
-                if (parts.length >= 1) 
+                // Format: UserID,Email,Password,Name,Date,Time (new format)
+                // Or: Email,Password,Name,Date,Time (old format)
+                int emailIndex = parts.length >= 6 ? 1 : 0; // New format has user ID first
+                
+                if (parts.length > emailIndex) 
                 {
-                    String storedEmail = parts[0].trim().toLowerCase();
+                    String storedEmail = parts[emailIndex].trim().toLowerCase();
                     String inputEmail = email.trim().toLowerCase();
                     
                     if (storedEmail.equals(inputEmail)) 
@@ -65,6 +132,95 @@ public class User_authen
             System.out.println("⚠️  Note: No existing users found (first registration)");
         }
         return false; // ❌ Email doesn't exist
+    }
+    
+    // Login user and set current user ID
+    public boolean login() 
+    {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("   🔐 USER LOGIN");
+        System.out.println("=".repeat(50));
+        
+        System.out.print("📧 Enter your email: ");
+        String email = scanner.nextLine().trim();
+        System.out.print("🔒 Enter your password: ");
+        String password = scanner.nextLine();
+        
+        try 
+        {
+            BufferedReader reader = new BufferedReader(new FileReader(usersFile));
+            String line;
+            
+            while ((line = reader.readLine()) != null) 
+            {
+                String[] parts = line.split(",");
+                
+                // Handle both formats: new (with UserID) and old (without UserID)
+                int userIdIndex = 0;
+                int emailIndex = 1;
+                int passwordIndex = 2;
+                
+                // Check if old format (no user ID)
+                if (parts.length < 6) 
+                {
+                    emailIndex = 0;
+                    passwordIndex = 1;
+                    userIdIndex = -1; // No user ID in old format
+                }
+                
+                if (parts.length > emailIndex && parts.length > passwordIndex) 
+                {
+                                        String storedEmail = parts[emailIndex].trim();
+                                        String storedHashedPassword = parts[passwordIndex].trim(); // This is now the stored hash
+                    
+                                        // Hash the entered password for comparison
+                                        String enteredPasswordHash = hashPassword(password);
+                    
+                                        if (enteredPasswordHash == null) {
+                                            System.out.println("❌ An error occurred during password hashing.");
+                                            reader.close();
+                                            return false;
+                                        }
+                    
+                                        if (storedEmail.equalsIgnoreCase(email) && storedHashedPassword.equals(enteredPasswordHash))                    {
+                        // Login successful
+                        if (userIdIndex >= 0 && parts.length > userIdIndex) 
+                        {
+                            try 
+                            {
+                                currentUserId = Integer.parseInt(parts[userIdIndex].trim());
+                            } 
+                            catch (NumberFormatException e) 
+                            {
+                                // If user ID parsing fails, generate one
+                                currentUserId = getNextUserId();
+                            }
+                        } 
+                        else 
+                        {
+                            // Old format - generate user ID
+                            currentUserId = getNextUserId();
+                        }
+                        
+                        currentUserEmail = email;
+                        reader.close();
+                        System.out.println("\n✅ Login successful!");
+                        System.out.println("👤 User ID: " + currentUserId);
+                        System.out.println("📧 Email: " + email);
+                        return true;
+                    }
+                }
+            }
+            reader.close();
+        } 
+        catch (IOException e) 
+        {
+            System.out.println("❌ Error reading user file: " + e.getMessage());
+            return false;
+        }
+        
+        System.out.println("\n❌ Invalid email or password. Please try again.");
+        return false;
     }
         
     
@@ -264,6 +420,38 @@ public class User_authen
         }
     }
     
+    // Hashes a password using SHA-256
+    private String hashPassword(String password) 
+    {
+        try 
+        {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedhash = digest.digest(password.getBytes());
+            return bytesToHex(encodedhash);
+        } 
+        catch (NoSuchAlgorithmException e) 
+        {
+            System.err.println("❌ SHA-256 algorithm not found: " + e.getMessage());
+            return null; // Should not happen in a standard Java environment
+        }
+    }
+
+    // Converts a byte array to a hexadecimal string
+    private String bytesToHex(byte[] hash) 
+    {
+        StringBuilder hexString = new StringBuilder(2 * hash.length);
+        for (int i = 0; i < hash.length; i++) 
+        {
+            String hex = Integer.toHexString(0xff & hash[i]);
+            if (hex.length() == 1) 
+            {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+    
     private boolean saveUserAccount_toCSV(String email, String password, String name) 
     {
         try 
@@ -274,11 +462,27 @@ public class User_authen
             DateTimeFormatter signUp_Time = DateTimeFormatter.ofPattern("HH:mm:ss");
             String date = now.format(signUp_Date);
             String time = now.format(signUp_Time);
+            
+            // Generate user ID
+            int userId = getNextUserId();
 
-            String Data_Line = String.format("%s,%s,%s,%s,%s\n", email, password, name, date, time);
+            // Hash the password before saving
+            String hashedPassword = hashPassword(password);
+            if (hashedPassword == null) {
+                System.out.println("❌ Failed to hash password.");
+                return false;
+            }
+
+            // Format: UserID,Email,HashedPassword,Name,Date,Time
+            String Data_Line = String.format("%d,%s,%s,%s,%s,%s\n", userId, email, hashedPassword, name, date, time);
 
             write.write(Data_Line);
             write.close();
+            
+            // Set as current user after successful signup
+            currentUserId = userId;
+            currentUserEmail = email;
+            
             return true; // ✅ Success
         } 
         
